@@ -1,0 +1,11 @@
+import Papa from 'papaparse';
+export type Row=Record<string,any>;
+const normal=(s:string)=>s.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+const find=(r:Row,parts:string[])=>Object.keys(r).find(k=>parts.some(p=>normal(k).includes(p)));
+const number=(v:any):number|null=>{if(typeof v==='number'&&Number.isFinite(v))return v;if(typeof v==='string'){const n=Number(v.replace(/[%,$]/g,'').trim());return Number.isFinite(n)?n:null}return null};
+async function csv(file:string):Promise<Row[]>{try{const r=await fetch(`${import.meta.env.BASE_URL}data/${file}`);if(!r.ok)return[];return Papa.parse<Row>(await r.text(),{header:true,skipEmptyLines:true,dynamicTyping:true}).data}catch{return[]}}
+export async function loadData(){const [lr,fr,mr]=await Promise.all([csv('experiment_leaderboard.csv'),csv('feature_importance.csv'),csv('final_evaluation_summary.csv')]);
+const experiments=lr.map((raw,i)=>{const mk=find(raw,['model_name','model','algorithm','experiment','candidate','name']);const sk=find(raw,['validation_score','val_score','validation_accuracy','roc_auc','f1_score','accuracy','score','metric']);const rk=find(raw,['training_time','runtime','duration','elapsed']);const st=find(raw,['status']);return {label:String(raw[mk||'']??`Experiment ${i+1}`),score:sk?number(raw[sk]):null,runtime:rk?number(raw[rk]):null,status:String(raw[st||'']??'Recorded'),raw}});
+const features=fr.map((raw,i)=>{const nk=find(raw,['feature_name','feature','variable','name']);const vk=find(raw,['importance_mean','mean_abs_shap','importance','score','value','weight']);return {name:String(raw[nk||'']??`Feature ${i+1}`),importance:vk?(number(raw[vk])??0):0,raw}}).sort((a,b)=>b.importance-a.importance);
+const metrics=mr.flatMap(raw=>{const nk=find(raw,['metric','name','measure','key']);const vk=find(raw,['value','score','result','metric_value']);if(nk&&vk)return[{name:String(raw[nk]),value:number(raw[vk])??String(raw[vk]),raw}];const keys=Object.keys(raw);if(keys.length>=2&&number(raw[keys[1]])!==null)return[{name:String(raw[keys[0]]),value:number(raw[keys[1]])!,raw}];return keys.map(k=>({name:k,value:number(raw[k])??String(raw[k]??'—'),raw}))});
+return {experiments,features,metrics,raw:{lr,fr,mr}}}

@@ -1,0 +1,2 @@
+Best Experiment,Best Model,Validation Score,Test Accuracy,Test F1 Macro,Test F1 Weighted,Test Balanced Accuracy,Successful Experiments
+trial_05,Support Vector Machine,0.9824561403508771,0.9736842105263158,0.9715828832571666,0.9736164257756981,0.9692460317460317,5
